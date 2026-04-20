@@ -116,12 +116,21 @@
   --gradient-card: linear-gradient(145deg, oklch(0.245 0.016 270), oklch(0.2 0.014 270));
   --gradient-hero: radial-gradient(ellipse at top, oklch(0.78 0.18 155 / 18%), transparent 60%);
   --gradient-violet: linear-gradient(135deg, oklch(0.7 0.16 290), oklch(0.6 0.2 320));
+  --gradient-mesh: radial-gradient(at 20% 0%, oklch(0.78 0.18 155 / 22%), transparent 50%),
+                   radial-gradient(at 80% 10%, oklch(0.7 0.16 290 / 18%), transparent 55%),
+                   radial-gradient(at 50% 100%, oklch(0.7 0.18 30 / 12%), transparent 60%);
+  --gradient-glass: linear-gradient(145deg, oklch(1 0 0 / 6%), oklch(1 0 0 / 1%));
+  --gradient-amber: linear-gradient(135deg, oklch(0.82 0.16 75), oklch(0.72 0.18 45));
 
   --shadow-sm: 0 1px 2px oklch(0 0 0 / 30%);
   --shadow-md: 0 8px 24px -8px oklch(0 0 0 / 50%);
   --shadow-glow: 0 12px 40px -12px oklch(0.78 0.18 155 / 45%);
+  --shadow-glow-violet: 0 12px 40px -12px oklch(0.7 0.16 290 / 45%);
+  --shadow-card: 0 2px 8px -2px oklch(0 0 0 / 25%), 0 12px 40px -16px oklch(0 0 0 / 35%);
+  --shadow-inset: inset 0 1px 0 0 oklch(1 0 0 / 6%);
 
   --transition-smooth: 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .dark {
@@ -142,5 +151,51 @@
 
   html, body {
     overscroll-behavior-y: none;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: var(--gradient-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid oklch(1 0 0 / 8%);
+    box-shadow: var(--shadow-card), var(--shadow-inset);
+  }
+  .glass-subtle {
+    background: oklch(0.22 0.014 270 / 70%);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid oklch(1 0 0 / 5%);
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .scroll-snap-x {
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 1.25rem;
+  }
+  .snap-card {
+    scroll-snap-align: start;
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      oklch(0.27 0.016 270) 0%,
+      oklch(0.32 0.018 270) 50%,
+      oklch(0.27 0.016 270) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
   }
 }
