@@ -2,53 +2,105 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { motion } from "framer-motion";
 import { monthlyFlow } from "@/lib/mock-data";
 
+const totalIn = monthlyFlow.reduce((s, d) => s + d.income, 0);
+const totalOut = monthlyFlow.reduce((s, d) => s + d.expense, 0);
+
+function fmt(n: number) {
+  return `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
 export function CashFlowChart() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.15 }}
-      className="rounded-2xl bg-card p-4"
-      style={{ boxShadow: "var(--shadow-sm)" }}
+      transition={{ delay: 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="relative overflow-hidden rounded-3xl p-5"
+      style={{
+        background: "var(--gradient-card)",
+        boxShadow: "var(--shadow-card), var(--shadow-inset)",
+      }}
     >
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-4 flex items-end justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Cash flow</p>
-          <p className="text-sm font-semibold">April 2026</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            Cash flow
+          </p>
+          <p className="mt-0.5 text-[15px] font-semibold tracking-tight">April 2026</p>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-success" />In</span>
-          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-destructive" />Out</span>
+        <div className="flex items-center gap-3">
+          <Legend dotClass="bg-success" label="In" amount={fmt(totalIn)} />
+          <Legend dotClass="bg-destructive" label="Out" amount={fmt(totalOut)} />
         </div>
       </div>
-      <div className="h-32 w-full">
+      <div className="-mx-1 h-36 w-[calc(100%+8px)]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={monthlyFlow} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
+          <AreaChart data={monthlyFlow} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
             <defs>
               <linearGradient id="grIn" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="oklch(0.78 0.18 155)" stopOpacity={0.5} />
+                <stop offset="0%" stopColor="oklch(0.78 0.18 155)" stopOpacity={0.55} />
                 <stop offset="100%" stopColor="oklch(0.78 0.18 155)" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="grOut" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="oklch(0.68 0.22 22)" stopOpacity={0.4} />
+                <stop offset="0%" stopColor="oklch(0.68 0.22 22)" stopOpacity={0.45} />
                 <stop offset="100%" stopColor="oklch(0.68 0.22 22)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <XAxis dataKey="day" tick={{ fontSize: 10, fill: "oklch(0.66 0.018 270)" }} axisLine={false} tickLine={false} />
-            <Tooltip
-              contentStyle={{
-                background: "oklch(0.22 0.015 270)",
-                border: "1px solid oklch(0.3 0.014 270 / 60%)",
-                borderRadius: 12,
-                fontSize: 12,
-              }}
-              labelStyle={{ color: "oklch(0.66 0.018 270)" }}
+            <XAxis
+              dataKey="day"
+              tick={{ fontSize: 10, fill: "oklch(0.66 0.018 270)" }}
+              axisLine={false}
+              tickLine={false}
+              dy={4}
             />
-            <Area type="monotone" dataKey="income" stroke="oklch(0.78 0.18 155)" strokeWidth={2} fill="url(#grIn)" />
-            <Area type="monotone" dataKey="expense" stroke="oklch(0.68 0.22 22)" strokeWidth={2} fill="url(#grOut)" />
+            <Tooltip
+              cursor={{ stroke: "oklch(1 0 0 / 12%)", strokeWidth: 1 }}
+              contentStyle={{
+                background: "oklch(0.22 0.015 270 / 95%)",
+                border: "1px solid oklch(1 0 0 / 8%)",
+                borderRadius: 14,
+                fontSize: 12,
+                padding: "8px 12px",
+                backdropFilter: "blur(12px)",
+                boxShadow: "0 12px 40px -12px oklch(0 0 0 / 60%)",
+              }}
+              labelStyle={{ color: "oklch(0.66 0.018 270)", fontSize: 10, marginBottom: 4 }}
+              formatter={(v: number, name) => [fmt(v), name === "income" ? "In" : "Out"]}
+              labelFormatter={(l) => `Day ${l}`}
+            />
+            <Area
+              type="monotone"
+              dataKey="income"
+              stroke="oklch(0.78 0.18 155)"
+              strokeWidth={2.2}
+              fill="url(#grIn)"
+              dot={false}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: "oklch(0.16 0.012 270)" }}
+            />
+            <Area
+              type="monotone"
+              dataKey="expense"
+              stroke="oklch(0.68 0.22 22)"
+              strokeWidth={2.2}
+              fill="url(#grOut)"
+              dot={false}
+              activeDot={{ r: 4, strokeWidth: 2, stroke: "oklch(0.16 0.012 270)" }}
+            />
           </AreaChart>
         </ResponsiveContainer>
       </div>
     </motion.div>
+  );
+}
+
+function Legend({ dotClass, label, amount }: { dotClass: string; label: string; amount: string }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} />
+      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      <span className="text-[11px] font-semibold tabular-nums">{amount}</span>
+    </div>
   );
 }
