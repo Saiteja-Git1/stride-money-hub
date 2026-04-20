@@ -65,7 +65,7 @@ export function CashFlowChart() {
                 boxShadow: "0 12px 40px -12px oklch(0 0 0 / 60%)",
               }}
               labelStyle={{ color: "oklch(0.66 0.018 270)", fontSize: 10, marginBottom: 4 }}
-              formatter={(v: number, name) => [fmt(v), name === "income" ? "In" : "Out"]}
+              formatter={(v, name) => [fmt(Number(v)), name === "income" ? "In" : "Out"]}
               labelFormatter={(l) => `Day ${l}`}
             />
             <Area
