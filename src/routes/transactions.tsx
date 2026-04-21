@@ -39,7 +39,7 @@ function TransactionsPage() {
 
   const update = (patch: Partial<FiltersState>) => {
     navigate({
-      search: (prev) => ({ ...prev, ...patch }),
+      search: (prev: FiltersState) => ({ ...prev, ...patch }),
       replace: true,
     });
   };
