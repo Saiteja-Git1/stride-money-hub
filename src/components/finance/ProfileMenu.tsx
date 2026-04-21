@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 interface RowProps {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   label: string;
   hint?: string;
   trailing?: React.ReactNode;
