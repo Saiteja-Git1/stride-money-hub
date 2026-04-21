@@ -4,9 +4,13 @@ import type { LucideIcon } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
 import type { Budget } from "@/lib/mock-data";
 import { categoryById, formatMoney } from "@/lib/mock-data";
+import { useState } from "react";
+import { BudgetDetailDrawer } from "./BudgetDetailDrawer";
 
 export function BudgetList({ budgets }: { budgets: Budget[] }) {
+  const [active, setActive] = useState<Budget | null>(null);
   return (
+    <>
     <div className="space-y-2.5">
       {budgets.map((b, i) => {
         const cat = categoryById(b.categoryId);
@@ -21,13 +25,15 @@ export function BudgetList({ budgets }: { budgets: Budget[] }) {
           ? "var(--warning)"
           : "var(--primary)";
         return (
-          <motion.div
+          <motion.button
             key={b.id}
+            type="button"
+            onClick={() => setActive(b)}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             whileTap={{ scale: 0.985 }}
-            className="relative overflow-hidden rounded-2xl border border-white/5 bg-card p-3.5"
+            className="relative w-full overflow-hidden rounded-2xl border border-white/5 bg-card p-3.5 text-left"
             style={{ boxShadow: "var(--shadow-sm)" }}
           >
             <div className="flex items-center gap-3">
@@ -93,9 +99,11 @@ export function BudgetList({ budgets }: { budgets: Budget[] }) {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </motion.button>
         );
       })}
     </div>
+    <BudgetDetailDrawer budget={active} onClose={() => setActive(null)} />
+    </>
   );
 }

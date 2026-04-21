@@ -28,7 +28,10 @@ export const Route = createFileRoute("/transactions")({
 function rangeStart(r: TxRange): number {
   if (r === "all") return 0;
   const days = r === "7d" ? 7 : r === "30d" ? 30 : 90;
-  return Date.now() - days * 86400000;
+  // Snap to today's UTC midnight so SSR and client agree.
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return todayUtc - days * 86400000;
 }
 
 function TransactionsPage() {
