@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ArrowLeftRight, Home, PieChart, Plus, Target } from "lucide-react";
+import { QuickAddSheet } from "./QuickAddSheet";
+import { toast } from "sonner";
 
 const items = [
   { to: "/", label: "Home", icon: Home },
@@ -11,6 +14,7 @@ const items = [
 
 export function BottomNav() {
   const { pathname } = useLocation();
+  const [quickOpen, setQuickOpen] = useState(false);
   return (
     <>
       <motion.button
@@ -18,11 +22,21 @@ export function BottomNav() {
         whileHover={{ scale: 1.04 }}
         transition={{ type: "spring", stiffness: 400, damping: 17 }}
         aria-label="Add transaction"
+        onClick={() => setQuickOpen(true)}
         className="fixed bottom-20 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full text-primary-foreground"
         style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
       >
         <Plus className="h-6 w-6" strokeWidth={2.6} />
       </motion.button>
+      <QuickAddSheet
+        open={quickOpen}
+        onOpenChange={setQuickOpen}
+        onSave={(d) => {
+          toast.success(
+            `${d.type === "income" ? "Income" : "Expense"} of $${d.amount.toFixed(2)} added`,
+          );
+        }}
+      />
       <nav
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/5 bg-background/70 backdrop-blur-2xl backdrop-saturate-150"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
