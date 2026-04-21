@@ -18,7 +18,14 @@ function dayKey(iso: string) {
 }
 
 function timeOf(iso: string) {
-  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  // Use UTC to avoid SSR/client timezone hydration mismatches.
+  const d = new Date(iso);
+  let h = d.getUTCHours();
+  const m = d.getUTCMinutes();
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${m.toString().padStart(2, "0")} ${ampm}`;
 }
 
 export function TransactionList({
