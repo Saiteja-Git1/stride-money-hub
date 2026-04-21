@@ -8,6 +8,7 @@ import { CashFlowChart } from "@/components/finance/CashFlowChart";
 import { BudgetList } from "@/components/finance/BudgetList";
 import { TransactionList } from "@/components/finance/TransactionList";
 import { SectionHeader } from "@/components/finance/SectionHeader";
+import { ProfileMenu } from "@/components/finance/ProfileMenu";
 import {
   accounts,
   budgets,
@@ -40,14 +41,17 @@ function Index() {
             </p>
             <h2 className="mt-0.5 text-[17px] font-semibold tracking-tight">Alex Morgan</h2>
           </div>
-          <motion.button
-            whileTap={{ scale: 0.92 }}
-            aria-label="Notifications"
-            className="glass-subtle relative flex h-10 w-10 items-center justify-center rounded-full"
-          >
-            <Bell className="h-[18px] w-[18px]" />
-            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
-          </motion.button>
+          <div className="flex items-center gap-2">
+            <motion.button
+              whileTap={{ scale: 0.92 }}
+              aria-label="Notifications"
+              className="glass-subtle relative flex h-10 w-10 items-center justify-center rounded-full"
+            >
+              <Bell className="h-[18px] w-[18px]" />
+              <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
+            </motion.button>
+            <ProfileMenu />
+          </div>
         </div>
       </header>
 
