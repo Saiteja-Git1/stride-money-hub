@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as Icons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { Check, X, ArrowDownLeft, ArrowUpRight, Delete } from "lucide-react";
+import { Check, X, ArrowDownLeft, ArrowUpRight, Delete, Sparkles } from "lucide-react";
 import { accounts, categories } from "@/lib/mock-data";
+import { supabase } from "@/integrations/supabase/client";
+import { recallCategory, rememberCategory } from "@/lib/category-memory";
 
 interface Props {
   open: boolean;
@@ -23,6 +25,9 @@ export function QuickAddSheet({ open, onOpenChange, onSave }: Props) {
   const [categoryId, setCategoryId] = useState<string>("c1");
   const [accountId, setAccountId] = useState<string>(accounts[0].id);
   const [note, setNote] = useState("");
+  const [suggestion, setSuggestion] = useState<{ categoryId: string; reason: string } | null>(null);
+  const [userPickedCategory, setUserPickedCategory] = useState(false);
+  const debounceRef = useRef<number | null>(null);
 
   // Smart defaults: when type changes, pick a sensible category in that type.
   useEffect(() => {
@@ -41,9 +46,51 @@ export function QuickAddSheet({ open, onOpenChange, onSave }: Props) {
         setNote("");
         setType("expense");
         setCategoryId("c1");
+        setSuggestion(null);
+        setUserPickedCategory(false);
       }, 200);
     }
   }, [open]);
+
+  // Auto-categorize from the note (memory → keyword/AI fallback).
+  useEffect(() => {
+    if (!open) return;
+    const trimmed = note.trim();
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    if (trimmed.length < 3) {
+      setSuggestion(null);
+      return;
+    }
+    // Local memory first — instant.
+    const remembered = recallCategory(trimmed);
+    if (remembered) {
+      const cat = categories.find((c) => c.id === remembered && c.type === type);
+      if (cat) {
+        setSuggestion({ categoryId: cat.id, reason: "memory" });
+        if (!userPickedCategory) setCategoryId(cat.id);
+        return;
+      }
+    }
+    // Then debounce a server call.
+    debounceRef.current = window.setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("lumen-categorize", {
+          body: { note: trimmed, type, categories },
+        });
+        if (error || !data?.suggestion) return;
+        const s = data.suggestion as { categoryId: string; reason: string };
+        const cat = categories.find((c) => c.id === s.categoryId && c.type === type);
+        if (!cat) return;
+        setSuggestion({ categoryId: cat.id, reason: s.reason });
+        if (!userPickedCategory) setCategoryId(cat.id);
+      } catch {
+        /* silently ignore — categorization is non-critical */
+      }
+    }, 450);
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+  }, [note, type, open, userPickedCategory]);
 
   const visibleCats = useMemo(
     () => categories.filter((c) => c.type === type),
@@ -67,6 +114,8 @@ export function QuickAddSheet({ open, onOpenChange, onSave }: Props) {
 
   const handleSave = () => {
     if (!canSave) return;
+    // Remember user's choice for this note keyword for next time.
+    if (note.trim().length >= 3) rememberCategory(note.trim(), categoryId);
     onSave?.({
       type,
       amount: numeric,
