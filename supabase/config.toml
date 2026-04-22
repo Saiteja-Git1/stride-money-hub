@@ -1,0 +1,4 @@
+project_id = "lexlvfnzbldfekosckbr"
+
+[functions.lumen-ai]
+verify_jwt = false

@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Calendar, Target, TrendingUp, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ProgressRing } from "./ProgressRing";
 import { formatMoney } from "@/lib/mock-data";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface Goal {
   id: string;
@@ -53,6 +54,48 @@ function Inner({
 
   const [contrib, setContrib] = useState("");
   const contribNum = parseFloat(contrib) || 0;
+
+  const [aiHint, setAiHint] = useState<string>("");
+  const [aiLoading, setAiLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setAiLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("lumen-ai", {
+          body: {
+            mode: "goal",
+            context: {
+              name: goal.name,
+              target: goal.target,
+              current: goal.current,
+              remaining,
+              monthsLeft,
+              monthlyNeeded: Math.round(monthlyNeeded),
+              deadline: goal.deadline,
+              currency: "USD",
+            },
+          },
+        });
+        if (!cancelled) {
+          if (error || data?.error) {
+            setAiHint("");
+          } else {
+            setAiHint(data?.text || "");
+          }
+        }
+      } catch {
+        if (!cancelled) setAiHint("");
+      } finally {
+        if (!cancelled) setAiLoading(false);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [goal.id, goal.current, goal.target, monthlyNeeded, monthsLeft, remaining, goal.name, goal.deadline]);
 
   return (
     <>
@@ -150,16 +193,33 @@ function Inner({
             >
               <Sparkles className="h-4 w-4" />
             </div>
-            <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-              Save{" "}
-              <span className="font-semibold text-foreground">
-                {formatMoney(monthlyNeeded)}
-              </span>{" "}
-              every month for the next{" "}
-              <span className="font-semibold text-foreground">{monthsLeft}</span> month
-              {monthsLeft === 1 ? "" : "s"} to hit{" "}
-              <span className="font-semibold text-foreground">{goal.deadline}</span>.
-            </p>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={aiHint || (aiLoading ? "loading" : "fallback")}
+                initial={{ opacity: 0, y: 3 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-[11.5px] leading-relaxed text-muted-foreground"
+              >
+                {aiHint
+                  ? aiHint
+                  : aiLoading
+                    ? "Lumen AI is thinking…"
+                    : (
+                      <>
+                        Save{" "}
+                        <span className="font-semibold text-foreground">
+                          {formatMoney(monthlyNeeded)}
+                        </span>{" "}
+                        every month for the next{" "}
+                        <span className="font-semibold text-foreground">{monthsLeft}</span> month
+                        {monthsLeft === 1 ? "" : "s"} to hit{" "}
+                        <span className="font-semibold text-foreground">{goal.deadline}</span>.
+                      </>
+                    )}
+              </motion.p>
+            </AnimatePresence>
           </div>
 
           {/* Contribute */}
