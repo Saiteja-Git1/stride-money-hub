@@ -10,6 +10,7 @@ import { TransactionList } from "@/components/finance/TransactionList";
 import { SectionHeader } from "@/components/finance/SectionHeader";
 import { ProfileMenu } from "@/components/finance/ProfileMenu";
 import { LumenAICard } from "@/components/finance/LumenAICard";
+import { InsightsPanel } from "@/components/finance/InsightsPanel";
 import {
   accounts,
   budgets,
@@ -85,6 +86,10 @@ function Index() {
           total={totalBalance()}
         />
       </motion.section>
+
+      <section className="mt-4 px-5">
+        <InsightsPanel />
+      </section>
 
       <section className="mt-7 px-5">
         <SectionHeader title="Budgets" action={{ label: "Manage" }} />
