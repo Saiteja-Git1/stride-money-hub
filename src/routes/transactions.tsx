@@ -10,6 +10,7 @@ import {
   type TxRange,
   type TxType,
 } from "@/components/finance/TransactionFilters";
+import { NLQueryBar } from "@/components/finance/NLQueryBar";
 import { transactions } from "@/lib/mock-data";
 
 const searchSchema = z.object({
@@ -95,6 +96,19 @@ function TransactionsPage() {
           onChange={update}
           onReset={reset}
           resultCount={filtered.length}
+        />
+      </section>
+
+      <section className="mt-3 px-5">
+        <NLQueryBar
+          onApply={(f) => {
+            update({
+              type: (f.type ?? "all") as TxType,
+              range: (f.range ?? "30d") as TxRange,
+              cats: f.cats ?? [],
+              q: f.q ?? "",
+            });
+          }}
         />
       </section>
 
