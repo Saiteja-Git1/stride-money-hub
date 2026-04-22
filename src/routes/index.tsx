@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Bell, Sparkles } from "lucide-react";
+import { Bell } from "lucide-react";
 import { AppShell } from "@/components/finance/AppShell";
 import { BalanceCard } from "@/components/finance/BalanceCard";
 import { AccountsRail } from "@/components/finance/AccountsRail";
@@ -9,6 +9,7 @@ import { BudgetList } from "@/components/finance/BudgetList";
 import { TransactionList } from "@/components/finance/TransactionList";
 import { SectionHeader } from "@/components/finance/SectionHeader";
 import { ProfileMenu } from "@/components/finance/ProfileMenu";
+import { LumenAICard } from "@/components/finance/LumenAICard";
 import {
   accounts,
   budgets,
@@ -78,35 +79,11 @@ function Index() {
         transition={{ delay: 0.25, duration: 0.5 }}
         className="mt-6 px-5"
       >
-        <div
-          className="relative flex items-start gap-3 overflow-hidden rounded-2xl border border-white/5 p-4"
-          style={{
-            background:
-              "linear-gradient(135deg, color-mix(in oklab, var(--accent) 16%, var(--card)), var(--card))",
-            boxShadow: "var(--shadow-sm)",
-          }}
-        >
-          <div
-            className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-50 blur-2xl"
-            style={{ background: "var(--accent)" }}
-          />
-          <div
-            className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-            style={{
-              background: "var(--gradient-violet)",
-              boxShadow: "var(--shadow-glow-violet)",
-            }}
-          >
-            <Sparkles className="h-4.5 w-4.5 text-foreground" />
-          </div>
-          <div className="relative">
-            <p className="text-[13px] font-semibold">You're on track this month</p>
-            <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
-              Spending is 12% lower than March. Keep it up — you'll save an extra{" "}
-              <span className="font-semibold text-foreground">$340</span>.
-            </p>
-          </div>
-        </div>
+        <LumenAICard
+          income={monthIncome()}
+          expense={monthExpense()}
+          total={totalBalance()}
+        />
       </motion.section>
 
       <section className="mt-7 px-5">
