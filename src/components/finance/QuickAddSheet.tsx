@@ -249,7 +249,7 @@ export function QuickAddSheet({ open, onOpenChange, onSave }: Props) {
                     return (
                       <button
                         key={c.id}
-                        onClick={() => setCategoryId(c.id)}
+                        onClick={() => { setCategoryId(c.id); setUserPickedCategory(true); }}
                         className="snap-card flex shrink-0 flex-col items-center gap-1.5 rounded-2xl border px-3 py-2 transition-all"
                         style={{
                           borderColor: active
@@ -260,13 +260,24 @@ export function QuickAddSheet({ open, onOpenChange, onSave }: Props) {
                             : "color-mix(in oklab, var(--foreground) 4%, transparent)",
                         }}
                       >
-                        <div
+                        <div className="relative">
+                          {suggestion && suggestion.categoryId === c.id && !userPickedCategory && (
+                            <span
+                              className="absolute -right-1 -top-1 z-10 flex h-3 w-3 items-center justify-center rounded-full"
+                              style={{ background: "var(--primary)", boxShadow: "var(--shadow-glow)" }}
+                              aria-label="AI suggestion"
+                            >
+                              <Sparkles className="h-2 w-2 text-foreground" />
+                            </span>
+                          )}
+                          <div
                           className="flex h-8 w-8 items-center justify-center rounded-lg"
                           style={{
                             background: `color-mix(in oklab, ${c.color} 22%, transparent)`,
                           }}
                         >
                           <Icon className="h-4 w-4" style={{ color: c.color }} />
+                        </div>
                         </div>
                         <span
                           className="text-[10.5px] font-medium"
