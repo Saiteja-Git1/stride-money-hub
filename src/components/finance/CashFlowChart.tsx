@@ -1,15 +1,25 @@
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { motion } from "framer-motion";
-import { monthlyFlow } from "@/lib/mock-data";
+import { formatMoney, type FinanceCurrency } from "@/lib/finance";
 
-const totalIn = monthlyFlow.reduce((s, d) => s + d.income, 0);
-const totalOut = monthlyFlow.reduce((s, d) => s + d.expense, 0);
-
-function fmt(n: number) {
-  return `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+interface CashFlowPoint {
+  day: string;
+  income: number;
+  expense: number;
 }
 
-export function CashFlowChart() {
+export function CashFlowChart({
+  currency = "USD",
+  data,
+  label,
+}: {
+  currency?: FinanceCurrency;
+  data: CashFlowPoint[];
+  label: string;
+}) {
+  const totalIn = data.reduce((sum, entry) => sum + entry.income, 0);
+  const totalOut = data.reduce((sum, entry) => sum + entry.expense, 0);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -26,16 +36,16 @@ export function CashFlowChart() {
           <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
             Cash flow
           </p>
-          <p className="mt-0.5 text-[15px] font-semibold tracking-tight">April 2026</p>
+          <p className="mt-0.5 text-[15px] font-semibold tracking-tight">{label}</p>
         </div>
         <div className="flex items-center gap-3">
-          <Legend dotClass="bg-success" label="In" amount={fmt(totalIn)} />
-          <Legend dotClass="bg-destructive" label="Out" amount={fmt(totalOut)} />
+          <Legend dotClass="bg-success" label="In" amount={formatMoney(totalIn, currency)} />
+          <Legend dotClass="bg-destructive" label="Out" amount={formatMoney(totalOut, currency)} />
         </div>
       </div>
       <div className="-mx-1 h-36 w-[calc(100%+8px)]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={monthlyFlow} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
             <defs>
               <linearGradient id="grIn" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="oklch(0.78 0.18 155)" stopOpacity={0.55} />
@@ -65,8 +75,11 @@ export function CashFlowChart() {
                 boxShadow: "0 12px 40px -12px oklch(0 0 0 / 60%)",
               }}
               labelStyle={{ color: "oklch(0.66 0.018 270)", fontSize: 10, marginBottom: 4 }}
-              formatter={(v, name) => [fmt(Number(v)), name === "income" ? "In" : "Out"]}
-              labelFormatter={(l) => `Day ${l}`}
+              formatter={(value, name) => [
+                formatMoney(Number(value), currency),
+                name === "income" ? "In" : "Out",
+              ]}
+              labelFormatter={(value) => `Day ${value}`}
             />
             <Area
               type="monotone"

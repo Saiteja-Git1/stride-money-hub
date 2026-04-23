@@ -1,11 +1,25 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Info, ChevronDown } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { transactions, categories, budgets } from "@/lib/mock-data";
+import {
+  Sparkles,
+  RefreshCw,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Info,
+  ChevronDown,
+} from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import type {
+  FinanceBudgetSummary,
+  FinanceCategory,
+  FinanceCurrency,
+  FinanceTransaction,
+} from "@/lib/finance";
 
 type Severity = "info" | "warning" | "good";
+
 interface Insight {
   id: string;
   kind: string;
@@ -20,13 +34,24 @@ const ICONS: Record<Severity, typeof Info> = {
   warning: AlertTriangle,
   good: TrendingUp,
 };
+
 const TONES: Record<Severity, string> = {
   info: "var(--accent)",
   warning: "oklch(0.72 0.18 35)",
   good: "var(--primary)",
 };
 
-export function InsightsPanel() {
+export function InsightsPanel({
+  budgets,
+  categories,
+  currency = "USD",
+  transactions,
+}: {
+  budgets: FinanceBudgetSummary[];
+  categories: FinanceCategory[];
+  currency?: FinanceCurrency;
+  transactions: FinanceTransaction[];
+}) {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -34,27 +59,56 @@ export function InsightsPanel() {
   const [openId, setOpenId] = useState<string | null>(null);
 
   async function load() {
+    if (transactions.length === 0 || categories.length === 0) {
+      setInsights([]);
+      setSummary(null);
+      setGeneratedAt(null);
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("lumen-insights", {
-        body: { transactions, categories, budgets, currency: "USD" },
+        body: {
+          transactions: transactions.map((transaction) => ({
+            id: transaction.id,
+            type: transaction.type,
+            amount: transaction.amount,
+            categoryId: transaction.category_id ?? "",
+            note: transaction.note,
+            date: transaction.date,
+          })),
+          categories: categories.map((category) => ({
+            id: category.id,
+            name: category.name,
+            type: category.type as "income" | "expense",
+          })),
+          budgets: budgets.map((budget) => ({
+            id: budget.id,
+            categoryId: budget.categoryId,
+            limit: budget.limit,
+            spent: budget.spent,
+          })),
+          currency,
+        },
       });
+
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+
       setInsights(data?.insights ?? []);
       setSummary(data?.summary ?? null);
       setGeneratedAt(data?.generatedAt ?? null);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not load insights");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not load insights");
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    void load();
+  }, [transactions, categories, budgets]);
 
   return (
     <div
@@ -74,12 +128,14 @@ export function InsightsPanel() {
             <p className="mt-0.5 text-[10.5px] text-muted-foreground">
               {generatedAt
                 ? `Updated ${new Date(generatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
-                : "Analysing your activity"}
+                : "Analyzing your activity"}
             </p>
           </div>
         </div>
         <button
-          onClick={load}
+          onClick={() => {
+            void load();
+          }}
           disabled={loading}
           aria-label="Refresh insights"
           className="glass-subtle flex h-7 w-7 items-center justify-center rounded-full disabled:opacity-50"
@@ -94,25 +150,29 @@ export function InsightsPanel() {
 
       <div className="mt-3 space-y-1.5">
         {loading && insights.length === 0 && (
-          <p className="text-[12px] text-muted-foreground">Reading your numbers…</p>
+          <p className="text-[12px] text-muted-foreground">Reading your numbers...</p>
         )}
         {!loading && insights.length === 0 && (
           <p className="text-[12px] text-muted-foreground">
-            Add more activity and we'll spot trends for you.
+            Add more activity and we&apos;ll spot trends for you.
           </p>
         )}
-        {insights.map((ins, i) => {
-          const Icon = ICONS[ins.severity] ?? Info;
-          const Trend = ins.kind === "spending_change" && ins.severity === "warning" ? TrendingDown : null;
-          const tone = TONES[ins.severity];
-          const open = openId === ins.id;
+        {insights.map((insight, index) => {
+          const Icon = ICONS[insight.severity] ?? Info;
+          const Trend =
+            insight.kind === "spending_change" && insight.severity === "warning"
+              ? TrendingDown
+              : null;
+          const tone = TONES[insight.severity];
+          const open = openId === insight.id;
+
           return (
             <motion.button
-              key={ins.id}
+              key={insight.id}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04 }}
-              onClick={() => setOpenId(open ? null : ins.id)}
+              transition={{ delay: index * 0.04 }}
+              onClick={() => setOpenId(open ? null : insight.id)}
               className="w-full rounded-xl border border-white/5 p-2.5 text-left"
               style={{ background: "color-mix(in oklab, var(--foreground) 3%, transparent)" }}
             >
@@ -129,13 +189,15 @@ export function InsightsPanel() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-[12.5px] font-semibold">{ins.title}</p>
+                    <p className="text-[12.5px] font-semibold">{insight.title}</p>
                     <ChevronDown
-                      className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+                      className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${
+                        open ? "rotate-180" : ""
+                      }`}
                     />
                   </div>
                   <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
-                    {ins.detail}
+                    {insight.detail}
                   </p>
                   <AnimatePresence initial={false}>
                     {open && (
@@ -147,17 +209,17 @@ export function InsightsPanel() {
                         className="overflow-hidden"
                       >
                         <div className="mt-2 flex gap-1.5">
-                          {ins.source.map((s) => (
+                          {insight.source.map((source) => (
                             <div
-                              key={s.label}
+                              key={source.label}
                               className="flex-1 rounded-lg border border-white/5 p-1.5 text-center"
                               style={{ background: "var(--card)" }}
                             >
                               <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground">
-                                {s.label}
+                                {source.label}
                               </p>
                               <p className="mt-0.5 text-[12px] font-semibold tabular-nums">
-                                {s.value}
+                                {source.value}
                               </p>
                             </div>
                           ))}

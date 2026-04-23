@@ -3,14 +3,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, RefreshCw, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import type { FinanceCurrency } from "@/lib/finance";
 
 interface Props {
+  currency?: FinanceCurrency;
   income: number;
   expense: number;
   total: number;
 }
 
-export function LumenAICard({ income, expense, total }: Props) {
+export function LumenAICard({ currency = "USD", income, expense, total }: Props) {
   const [insight, setInsight] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [asking, setAsking] = useState(false);
@@ -29,7 +31,7 @@ export function LumenAICard({ income, expense, total }: Props) {
             monthExpense: expense,
             totalBalance: total,
             net: income - expense,
-            currency: "USD",
+            currency,
           },
         },
       });
@@ -59,7 +61,7 @@ export function LumenAICard({ income, expense, total }: Props) {
       const { data, error } = await supabase.functions.invoke("lumen-ai", {
         body: {
           mode: "chat",
-          prompt: `My monthly income is $${income.toFixed(0)}, expenses $${expense.toFixed(0)}, total balance $${total.toFixed(0)}. Question: ${q}`,
+          prompt: `My monthly income is ${income.toFixed(0)} ${currency}, expenses ${expense.toFixed(0)} ${currency}, total balance ${total.toFixed(0)} ${currency}. Question: ${q}`,
         },
       });
       if (error) throw error;

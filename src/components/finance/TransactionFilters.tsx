@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, SlidersHorizontal, X, Check } from "lucide-react";
 import * as Icons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { categories } from "@/lib/mock-data";
+import type { FinanceCategory } from "@/lib/finance";
 
 export type TxType = "all" | "income" | "expense";
 export type TxRange = "7d" | "30d" | "90d" | "all";
@@ -16,6 +16,7 @@ export interface FiltersState {
 }
 
 interface Props {
+  categories: FinanceCategory[];
   value: FiltersState;
   onChange: (next: Partial<FiltersState>) => void;
   onReset: () => void;
@@ -35,7 +36,13 @@ const ranges: { value: TxRange; label: string }[] = [
   { value: "all", label: "All time" },
 ];
 
-export function TransactionFilters({ value, onChange, onReset, resultCount }: Props) {
+export function TransactionFilters({
+  categories,
+  value,
+  onChange,
+  onReset,
+  resultCount,
+}: Props) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const activeCount =
     (value.type !== "all" ? 1 : 0) +
@@ -43,22 +50,21 @@ export function TransactionFilters({ value, onChange, onReset, resultCount }: Pr
     value.cats.length +
     (value.q ? 1 : 0);
 
-  const toggleCat = (id: string) => {
+  const toggleCategory = (id: string) => {
     const next = value.cats.includes(id)
-      ? value.cats.filter((c) => c !== id)
+      ? value.cats.filter((categoryId) => categoryId !== id)
       : [...value.cats, id];
     onChange({ cats: next });
   };
 
   return (
     <div className="space-y-3">
-      {/* Search + Filter button */}
       <div className="flex items-center gap-2">
         <div className="glass-subtle relative flex h-11 flex-1 items-center rounded-2xl px-3.5">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input
             value={value.q}
-            onChange={(e) => onChange({ q: e.target.value })}
+            onChange={(event) => onChange({ q: event.target.value })}
             placeholder="Search transactions"
             className="ml-2.5 h-full w-full bg-transparent text-[13.5px] outline-none placeholder:text-muted-foreground"
           />
@@ -74,7 +80,7 @@ export function TransactionFilters({ value, onChange, onReset, resultCount }: Pr
         </div>
         <motion.button
           whileTap={{ scale: 0.94 }}
-          onClick={() => setShowAdvanced((v) => !v)}
+          onClick={() => setShowAdvanced((current) => !current)}
           className="glass-subtle relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
           aria-label="Toggle filters"
         >
@@ -93,14 +99,13 @@ export function TransactionFilters({ value, onChange, onReset, resultCount }: Pr
         </motion.button>
       </div>
 
-      {/* Type pills */}
       <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
-        {typePills.map((p) => {
-          const active = value.type === p.value;
+        {typePills.map((pill) => {
+          const active = value.type === pill.value;
           return (
             <button
-              key={p.value}
-              onClick={() => onChange({ type: p.value })}
+              key={pill.value}
+              onClick={() => onChange({ type: pill.value })}
               className="relative h-8 shrink-0 rounded-full px-3.5 text-[12px] font-semibold transition-colors"
               style={{
                 color: active ? "var(--primary-foreground)" : "var(--muted-foreground)",
@@ -117,13 +122,12 @@ export function TransactionFilters({ value, onChange, onReset, resultCount }: Pr
                   }}
                 />
               )}
-              <span className="relative">{p.label}</span>
+              <span className="relative">{pill.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Advanced panel */}
       <AnimatePresence initial={false}>
         {showAdvanced && (
           <motion.div
@@ -137,59 +141,60 @@ export function TransactionFilters({ value, onChange, onReset, resultCount }: Pr
               className="space-y-4 rounded-2xl border border-white/5 p-4"
               style={{ background: "var(--gradient-card)" }}
             >
-              {/* Date range */}
               <div>
                 <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Date range
                 </p>
                 <div className="grid grid-cols-4 gap-1.5">
-                  {ranges.map((r) => {
-                    const active = value.range === r.value;
+                  {ranges.map((range) => {
+                    const active = value.range === range.value;
                     return (
                       <button
-                        key={r.value}
-                        onClick={() => onChange({ range: r.value })}
+                        key={range.value}
+                        onClick={() => onChange({ range: range.value })}
                         className="rounded-lg py-2 text-[11.5px] font-semibold transition-all"
                         style={{
-                          background: active ? "var(--primary)" : "color-mix(in oklab, var(--foreground) 5%, transparent)",
+                          background: active
+                            ? "var(--primary)"
+                            : "color-mix(in oklab, var(--foreground) 5%, transparent)",
                           color: active ? "var(--primary-foreground)" : "var(--foreground)",
                           boxShadow: active ? "var(--shadow-glow)" : "none",
                         }}
                       >
-                        {r.label}
+                        {range.label}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Categories */}
               <div>
                 <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Categories {value.cats.length > 0 && `· ${value.cats.length} selected`}
+                  Categories {value.cats.length > 0 && `• ${value.cats.length} selected`}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {categories.map((c) => {
-                    const active = value.cats.includes(c.id);
+                  {categories.map((category) => {
+                    const active = value.cats.includes(category.id);
                     const Icon =
-                      (Icons[c.icon as keyof typeof Icons] as LucideIcon) ?? Icons.Circle;
+                      (Icons[category.icon as keyof typeof Icons] as LucideIcon) ?? Icons.Circle;
+
                     return (
                       <button
-                        key={c.id}
-                        onClick={() => toggleCat(c.id)}
+                        key={category.id}
+                        onClick={() => toggleCategory(category.id)}
                         className="flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[11.5px] font-medium transition-all"
                         style={{
                           borderColor: active
-                            ? `color-mix(in oklab, ${c.color} 60%, transparent)`
+                            ? `color-mix(in oklab, ${category.color} 60%, transparent)`
                             : "oklch(1 0 0 / 8%)",
                           background: active
-                            ? `color-mix(in oklab, ${c.color} 18%, transparent)`
+                            ? `color-mix(in oklab, ${category.color} 18%, transparent)`
                             : "transparent",
-                          color: active ? c.color : "var(--foreground)",
+                          color: active ? category.color : "var(--foreground)",
                         }}
                       >
-                        <Icon className="h-3 w-3" style={{ color: c.color }} />
-                        {c.name}
+                        <Icon className="h-3 w-3" style={{ color: category.color }} />
+                        {category.name}
                         {active && <Check className="h-3 w-3" />}
                       </button>
                     );
@@ -197,7 +202,6 @@ export function TransactionFilters({ value, onChange, onReset, resultCount }: Pr
                 </div>
               </div>
 
-              {/* Footer */}
               <div className="flex items-center justify-between pt-1">
                 <p className="text-[11.5px] text-muted-foreground">
                   <span className="font-semibold text-foreground">{resultCount}</span> result

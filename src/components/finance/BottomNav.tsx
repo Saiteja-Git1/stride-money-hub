@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ArrowLeftRight, Home, PieChart, Plus, Target } from "lucide-react";
-import { QuickAddSheet } from "./QuickAddSheet";
 import { toast } from "sonner";
+import { QuickAddSheet } from "./QuickAddSheet";
+import { useFinance } from "@/integrations/supabase/use-finance";
 
 const items = [
   { to: "/", label: "Home", icon: Home },
@@ -15,6 +16,8 @@ const items = [
 export function BottomNav() {
   const { pathname } = useLocation();
   const [quickOpen, setQuickOpen] = useState(false);
+  const { accounts, addTransaction, categories } = useFinance();
+
   return (
     <>
       <motion.button
@@ -29,11 +32,23 @@ export function BottomNav() {
         <Plus className="h-6 w-6" strokeWidth={2.6} />
       </motion.button>
       <QuickAddSheet
+        accounts={accounts}
+        categories={categories}
         open={quickOpen}
         onOpenChange={setQuickOpen}
-        onSave={(d) => {
+        onSave={async (data) => {
+          await addTransaction({
+            accountId: data.accountId,
+            amount: data.amount,
+            categoryId: data.categoryId,
+            currency: data.currency,
+            note: data.note,
+            type: data.type,
+          });
           toast.success(
-            `${d.type === "income" ? "Income" : "Expense"} of $${d.amount.toFixed(2)} added`,
+            `${data.type === "income" ? "Income" : "Expense"} of ${
+              data.currency === "INR" ? "₹" : "$"
+            }${data.amount.toFixed(2)} added`,
           );
         }}
       />

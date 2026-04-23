@@ -1,38 +1,63 @@
 import { motion } from "framer-motion";
 import * as Icons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { Transaction } from "@/lib/mock-data";
-import { categoryById, formatMoney } from "@/lib/mock-data";
+import {
+  fallbackCategory,
+  formatMoney,
+  type FinanceCategory,
+  type FinanceTransaction,
+} from "@/lib/finance";
 
 function dayKey(iso: string) {
-  const d = new Date(iso);
+  const date = new Date(iso);
   const today = new Date();
   const diff = Math.floor(
     (new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime() -
-      new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()) /
+      new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()) /
       86400000,
   );
+
   if (diff === 0) return "Today";
   if (diff === 1) return "Yesterday";
-  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function timeOf(iso: string) {
-  // Use UTC to avoid SSR/client timezone hydration mismatches.
-  const d = new Date(iso);
-  let h = d.getUTCHours();
-  const m = d.getUTCMinutes();
-  const ampm = h >= 12 ? "PM" : "AM";
-  h = h % 12;
-  if (h === 0) h = 12;
-  return `${h}:${m.toString().padStart(2, "0")} ${ampm}`;
+  const date = new Date(iso);
+  let hours = date.getUTCHours();
+  const minutes = date.getUTCMinutes();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+  return `${hours}:${minutes.toString().padStart(2, "0")} ${ampm}`;
+}
+
+function resolveCategory(
+  transaction: FinanceTransaction,
+  categories: FinanceCategory[],
+) {
+  if (transaction.category_id) {
+    const category = categories.find((entry) => entry.id === transaction.category_id);
+    if (category) {
+      return category;
+    }
+  }
+
+  return fallbackCategory(transaction.type === "income" ? "income" : "expense");
 }
 
 export function TransactionList({
+  categories,
   transactions,
   grouped = false,
 }: {
-  transactions: Transaction[];
+  categories: FinanceCategory[];
+  transactions: FinanceTransaction[];
   grouped?: boolean;
 }) {
   if (transactions.length === 0) {
@@ -49,29 +74,35 @@ export function TransactionList({
         className="overflow-hidden rounded-2xl border border-white/5 bg-card"
         style={{ boxShadow: "var(--shadow-sm)" }}
       >
-        {transactions.map((t, i) => (
-          <Row key={t.id} t={t} i={i} />
+        {transactions.map((transaction, index) => (
+          <Row
+            key={transaction.id}
+            category={resolveCategory(transaction, categories)}
+            transaction={transaction}
+            index={index}
+          />
         ))}
       </div>
     );
   }
 
-  // grouped by day
-  const groups = new Map<string, Transaction[]>();
-  for (const t of transactions) {
-    const k = dayKey(t.date);
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k)!.push(t);
+  const groups = new Map<string, FinanceTransaction[]>();
+  for (const transaction of transactions) {
+    const key = dayKey(transaction.date);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(transaction);
   }
 
-  let i = 0;
+  let index = 0;
   return (
     <div className="space-y-4">
       {Array.from(groups.entries()).map(([day, items]) => {
         const dayTotal = items.reduce(
-          (s, x) => s + (x.type === "income" ? x.amount : -x.amount),
+          (sum, transaction) =>
+            sum + (transaction.type === "income" ? transaction.amount : -transaction.amount),
           0,
         );
+
         return (
           <div key={day}>
             <div className="mb-2 flex items-center justify-between px-1">
@@ -83,17 +114,25 @@ export function TransactionList({
                   dayTotal >= 0 ? "text-success" : "text-muted-foreground"
                 }`}
               >
-                {dayTotal >= 0 ? "+" : "−"}
-                {formatMoney(Math.abs(dayTotal)).replace("-", "")}
+                {dayTotal >= 0 ? "+" : "-"}
+                {formatMoney(Math.abs(dayTotal), items[0]?.currency ?? "USD").replace("-", "")}
               </p>
             </div>
             <div
               className="overflow-hidden rounded-2xl border border-white/5 bg-card"
               style={{ boxShadow: "var(--shadow-sm)" }}
             >
-              {items.map((t) => {
-                const idx = i++;
-                return <Row key={t.id} t={t} i={idx} showTime />;
+              {items.map((transaction) => {
+                const currentIndex = index++;
+                return (
+                  <Row
+                    key={transaction.id}
+                    category={resolveCategory(transaction, categories)}
+                    transaction={transaction}
+                    index={currentIndex}
+                    showTime
+                  />
+                );
               })}
             </div>
           </div>
@@ -103,32 +142,42 @@ export function TransactionList({
   );
 }
 
-function Row({ t, i, showTime = false }: { t: Transaction; i: number; showTime?: boolean }) {
-  const cat = categoryById(t.categoryId);
-  const Icon = (Icons[cat.icon as keyof typeof Icons] as LucideIcon) ?? Icons.Circle;
-  const isIncome = t.type === "income";
+function Row({
+  category,
+  transaction,
+  index,
+  showTime = false,
+}: {
+  category: FinanceCategory;
+  transaction: FinanceTransaction;
+  index: number;
+  showTime?: boolean;
+}) {
+  const Icon = (Icons[category.icon as keyof typeof Icons] as LucideIcon) ?? Icons.Circle;
+  const isIncome = transaction.type === "income";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(i * 0.025, 0.3), duration: 0.3 }}
+      transition={{ delay: Math.min(index * 0.025, 0.3), duration: 0.3 }}
       whileTap={{ scale: 0.98 }}
       className="flex cursor-pointer items-center gap-3 border-b border-border/30 p-3.5 transition-colors last:border-0 hover:bg-white/[0.02]"
     >
       <div
         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
         style={{
-          background: `color-mix(in oklab, ${cat.color} 18%, transparent)`,
-          boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${cat.color} 28%, transparent)`,
+          background: `color-mix(in oklab, ${category.color} 18%, transparent)`,
+          boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${category.color} 28%, transparent)`,
         }}
       >
-        <Icon className="h-4.5 w-4.5" style={{ color: cat.color }} />
+        <Icon className="h-4.5 w-4.5" style={{ color: category.color }} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[14px] font-medium leading-tight">{t.note}</p>
+        <p className="truncate text-[14px] font-medium leading-tight">{transaction.note}</p>
         <p className="mt-0.5 text-[11px] text-muted-foreground">
-          {cat.name}
-          {showTime && <span> · {timeOf(t.date)}</span>}
+          {category.name}
+          {showTime && <span> • {timeOf(transaction.date)}</span>}
         </p>
       </div>
       <p
@@ -136,8 +185,8 @@ function Row({ t, i, showTime = false }: { t: Transaction; i: number; showTime?:
           isIncome ? "text-success" : "text-foreground"
         }`}
       >
-        {isIncome ? "+" : "−"}
-        {formatMoney(t.amount).replace("-", "")}
+        {isIncome ? "+" : "-"}
+        {formatMoney(transaction.amount, transaction.currency).replace("-", "")}
       </p>
     </motion.div>
   );

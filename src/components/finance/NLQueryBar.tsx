@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, Send, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { categories } from "@/lib/mock-data";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import type { FinanceCategory } from "@/lib/finance";
 
 interface Filters {
   type?: "income" | "expense" | "all";
@@ -13,6 +13,7 @@ interface Filters {
 }
 
 interface Props {
+  categories: FinanceCategory[];
   onApply: (filters: Filters, query: string) => void;
 }
 
@@ -22,23 +23,32 @@ const SUGGESTIONS = [
   "Income last 90 days",
 ];
 
-export function NLQueryBar({ onApply }: Props) {
+export function NLQueryBar({ categories, onApply }: Props) {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function run(text: string) {
-    const q = text.trim();
-    if (!q || loading) return;
+    const trimmed = text.trim();
+    if (!trimmed || loading) return;
+
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("lumen-nl-query", {
-        body: { query: q, categories: categories.map((c) => ({ id: c.id, name: c.name })) },
+        body: {
+          query: trimmed,
+          categories: categories.map((category) => ({
+            id: category.id,
+            name: category.name,
+          })),
+        },
       });
+
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      onApply((data?.filters ?? {}) as Filters, q);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not understand that");
+
+      onApply((data?.filters ?? {}) as Filters, trimmed);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not understand that");
     } finally {
       setLoading(false);
     }
@@ -61,9 +71,9 @@ export function NLQueryBar({ onApply }: Props) {
         </div>
         <input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && run(query)}
-          placeholder="Ask in plain English…"
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => event.key === "Enter" && run(query)}
+          placeholder="Ask in plain English..."
           className="h-8 w-full bg-transparent text-[12.5px] outline-none placeholder:text-muted-foreground"
         />
         <motion.button
@@ -74,18 +84,25 @@ export function NLQueryBar({ onApply }: Props) {
           className="flex h-7 w-7 items-center justify-center rounded-full disabled:opacity-40"
           style={{ background: "var(--gradient-primary)", color: "var(--primary-foreground)" }}
         >
-          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+          {loading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Send className="h-3.5 w-3.5" />
+          )}
         </motion.button>
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5">
-        {SUGGESTIONS.map((s) => (
+        {SUGGESTIONS.map((suggestion) => (
           <button
-            key={s}
-            onClick={() => { setQuery(s); run(s); }}
+            key={suggestion}
+            onClick={() => {
+              setQuery(suggestion);
+              void run(suggestion);
+            }}
             className="rounded-full border border-white/5 px-2.5 py-1 text-[10.5px] text-muted-foreground hover:text-foreground"
             style={{ background: "color-mix(in oklab, var(--foreground) 4%, transparent)" }}
           >
-            {s}
+            {suggestion}
           </button>
         ))}
       </div>

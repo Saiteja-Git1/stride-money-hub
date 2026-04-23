@@ -1,17 +1,16 @@
 import { motion } from "framer-motion";
 import { Banknote, CreditCard, Landmark, Wallet } from "lucide-react";
-import type { Account } from "@/lib/mock-data";
-import { formatMoney } from "@/lib/mock-data";
+import { accountGradient, formatMoney, type FinanceAccount } from "@/lib/finance";
 
 const iconMap = { bank: Landmark, cash: Banknote, wallet: Wallet, credit: CreditCard };
-const typeLabel: Record<Account["type"], string> = {
+const typeLabel: Record<FinanceAccount["type"], string> = {
   bank: "Bank",
   cash: "Cash",
   wallet: "Wallet",
   credit: "Credit",
 };
 
-export function AccountsRail({ accounts }: { accounts: Account[] }) {
+export function AccountsRail({ accounts }: { accounts: FinanceAccount[] }) {
   return (
     <div className="scroll-snap-x no-scrollbar -mx-5 overflow-x-auto px-5 pb-2">
       <div className="flex gap-3">
@@ -27,7 +26,7 @@ export function AccountsRail({ accounts }: { accounts: Account[] }) {
               whileTap={{ scale: 0.97 }}
               className="snap-card relative flex h-40 w-60 shrink-0 flex-col justify-between overflow-hidden rounded-3xl p-4"
               style={{
-                background: a.gradient,
+                background: accountGradient(a),
                 boxShadow: "var(--shadow-card), var(--shadow-inset)",
               }}
             >
@@ -65,7 +64,7 @@ export function AccountsRail({ accounts }: { accounts: Account[] }) {
                   className="mt-0.5 text-[22px] font-semibold leading-none tabular-nums text-foreground"
                   style={negative ? { color: "oklch(0.95 0.03 30)" } : undefined}
                 >
-                  {formatMoney(a.balance)}
+                  {formatMoney(a.balance, a.currency)}
                 </p>
               </div>
             </motion.div>
