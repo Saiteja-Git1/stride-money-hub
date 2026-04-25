@@ -190,7 +190,7 @@ export function buildBudgetSummaries(
   const monthTransactions = getMonthTransactions(transactions, month);
 
   return budgets
-    .filter((budget) => budget.month === monthKey)
+    .filter((budget) => budget.month.slice(0, 7) === monthKey)
     .map((budget) => ({
       id: budget.id,
       categoryId: budget.category_id,
