@@ -11,7 +11,7 @@ import {
   type TxType,
 } from "@/components/finance/TransactionFilters";
 import { NLQueryBar } from "@/components/finance/NLQueryBar";
-import { transactions } from "@/lib/mock-data";
+import { useFinance } from "@/integrations/supabase/use-finance";
 
 const searchSchema = z.object({
   q: fallback(z.string(), "").default(""),
@@ -29,7 +29,6 @@ export const Route = createFileRoute("/transactions")({
 function rangeStart(r: TxRange): number {
   if (r === "all") return 0;
   const days = r === "7d" ? 7 : r === "30d" ? 30 : 90;
-  // Snap to today's UTC midnight so SSR and client agree.
   const now = new Date();
   const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   return todayUtc - days * 86400000;
@@ -38,6 +37,7 @@ function rangeStart(r: TxRange): number {
 function TransactionsPage() {
   const { q, type, range, cats } = Route.useSearch();
   const navigate = useNavigate({ from: "/transactions" });
+  const { categories, transactions } = useFinance();
 
   const filters: FiltersState = { q, type, range, cats };
 
@@ -61,13 +61,13 @@ function TransactionsPage() {
     return transactions
       .filter((t) => {
         if (type !== "all" && t.type !== type) return false;
-        if (cats.length > 0 && !cats.includes(t.categoryId)) return false;
+        if (cats.length > 0 && !cats.includes(t.category_id ?? "")) return false;
         if (start > 0 && new Date(t.date).getTime() < start) return false;
         if (ql && !t.note.toLowerCase().includes(ql)) return false;
         return true;
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [q, type, range, cats]);
+  }, [q, type, range, cats, transactions]);
 
   const total = filtered.reduce(
     (s, t) => s + (t.type === "income" ? t.amount : -t.amount),
@@ -80,9 +80,7 @@ function TransactionsPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Activity</h1>
         <p className="mt-1 text-[12.5px] text-muted-foreground">
           {filtered.length} transactions ·{" "}
-          <span
-            className={`font-semibold ${total >= 0 ? "text-success" : "text-foreground"}`}
-          >
+          <span className={`font-semibold ${total >= 0 ? "text-success" : "text-foreground"}`}>
             {total >= 0 ? "+" : "−"}$
             {Math.abs(total).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>{" "}
@@ -113,7 +111,7 @@ function TransactionsPage() {
       </section>
 
       <section className="mt-5 px-5">
-        <TransactionList transactions={filtered} grouped />
+        <TransactionList categories={categories} transactions={filtered} grouped />
       </section>
     </AppShell>
   );

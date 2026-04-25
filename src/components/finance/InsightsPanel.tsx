@@ -1,32 +1,21 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Sparkles,
-  RefreshCw,
-  AlertTriangle,
-  TrendingUp,
-  TrendingDown,
-  Info,
-  ChevronDown,
-} from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { AlertTriangle, TrendingUp, TrendingDown, Info, ChevronDown } from "lucide-react";
+import { useState } from "react";
 import type {
   FinanceBudgetSummary,
   FinanceCategory,
   FinanceCurrency,
   FinanceTransaction,
 } from "@/lib/finance";
+import { formatMoney } from "@/lib/finance";
 
 type Severity = "info" | "warning" | "good";
-
 interface Insight {
   id: string;
-  kind: string;
   severity: Severity;
   title: string;
   detail: string;
-  source: { label: string; value: string }[];
 }
 
 const ICONS: Record<Severity, typeof Info> = {
@@ -34,17 +23,106 @@ const ICONS: Record<Severity, typeof Info> = {
   warning: AlertTriangle,
   good: TrendingUp,
 };
-
 const TONES: Record<Severity, string> = {
   info: "var(--accent)",
   warning: "oklch(0.72 0.18 35)",
-  good: "var(--primary)",
+  good: "oklch(0.78 0.18 155)",
 };
+
+function buildInsights(
+  transactions: FinanceTransaction[],
+  categories: FinanceCategory[],
+  budgets: FinanceBudgetSummary[],
+  currency: FinanceCurrency,
+): Insight[] {
+  const insights: Insight[] = [];
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthKey = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, "0")}`;
+
+  const thisTx = transactions.filter((t) => t.date.slice(0, 7) === thisMonth);
+  const lastTx = transactions.filter((t) => t.date.slice(0, 7) === lastMonthKey);
+
+  // Budget alerts
+  for (const b of budgets) {
+    const pct = b.limit > 0 ? (b.spent / b.limit) * 100 : 0;
+    const cat = categories.find((c) => c.id === b.categoryId);
+    if (!cat) continue;
+    if (pct >= 90) {
+      insights.push({
+        id: `budget-danger-${b.id}`,
+        severity: "warning",
+        title: `${cat.name} near limit`,
+        detail: `Spent ${formatMoney(b.spent, currency)} of ${formatMoney(b.limit, currency)} budget (${Math.round(pct)}%).`,
+      });
+    } else if (pct >= 70) {
+      insights.push({
+        id: `budget-warn-${b.id}`,
+        severity: "info",
+        title: `${cat.name} at ${Math.round(pct)}%`,
+        detail: `${formatMoney(b.limit - b.spent, currency)} remaining for this month.`,
+      });
+    }
+  }
+
+  // Spending change vs last month
+  const catSpendThis = new Map<string, number>();
+  const catSpendLast = new Map<string, number>();
+  for (const t of thisTx) {
+    if (t.type === "expense" && t.category_id) {
+      catSpendThis.set(t.category_id, (catSpendThis.get(t.category_id) ?? 0) + t.amount);
+    }
+  }
+  for (const t of lastTx) {
+    if (t.type === "expense" && t.category_id) {
+      catSpendLast.set(t.category_id, (catSpendLast.get(t.category_id) ?? 0) + t.amount);
+    }
+  }
+  for (const [catId, thisAmt] of catSpendThis) {
+    const lastAmt = catSpendLast.get(catId) ?? 0;
+    if (lastAmt === 0) continue;
+    const change = ((thisAmt - lastAmt) / lastAmt) * 100;
+    const cat = categories.find((c) => c.id === catId);
+    if (!cat) continue;
+    if (change >= 30) {
+      insights.push({
+        id: `change-up-${catId}`,
+        severity: "warning",
+        title: `${cat.name} up ${Math.round(change)}%`,
+        detail: `${formatMoney(thisAmt, currency)} this month vs ${formatMoney(lastAmt, currency)} last month.`,
+      });
+    } else if (change <= -25) {
+      insights.push({
+        id: `change-down-${catId}`,
+        severity: "good",
+        title: `${cat.name} down ${Math.round(Math.abs(change))}%`,
+        detail: `Saved ${formatMoney(lastAmt - thisAmt, currency)} vs last month. Keep it up!`,
+      });
+    }
+  }
+
+  // Net positive month
+  const thisIncome = thisTx.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+  const thisExpense = thisTx.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+  if (thisIncome > 0 && thisExpense < thisIncome * 0.6) {
+    insights.push({
+      id: "net-positive",
+      severity: "good",
+      title: "Strong savings rate",
+      detail: `You've spent ${Math.round((thisExpense / thisIncome) * 100)}% of income — well under 80%.`,
+    });
+  }
+
+  if (insights.length === 0 && transactions.length === 0) return [];
+
+  return insights.slice(0, 4);
+}
 
 export function InsightsPanel({
   budgets,
   categories,
-  currency = "USD",
+  currency = "INR",
   transactions,
 }: {
   budgets: FinanceBudgetSummary[];
@@ -52,126 +130,31 @@ export function InsightsPanel({
   currency?: FinanceCurrency;
   transactions: FinanceTransaction[];
 }) {
-  const [insights, setInsights] = useState<Insight[]>([]);
-  const [summary, setSummary] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const insights = useMemo(
+    () => buildInsights(transactions, categories, budgets, currency),
+    [transactions, categories, budgets, currency],
+  );
 
-  async function load() {
-    if (transactions.length === 0 || categories.length === 0) {
-      setInsights([]);
-      setSummary(null);
-      setGeneratedAt(null);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("lumen-insights", {
-        body: {
-          transactions: transactions.map((transaction) => ({
-            id: transaction.id,
-            type: transaction.type,
-            amount: transaction.amount,
-            categoryId: transaction.category_id ?? "",
-            note: transaction.note,
-            date: transaction.date,
-          })),
-          categories: categories.map((category) => ({
-            id: category.id,
-            name: category.name,
-            type: category.type as "income" | "expense",
-          })),
-          budgets: budgets.map((budget) => ({
-            id: budget.id,
-            categoryId: budget.categoryId,
-            limit: budget.limit,
-            spent: budget.spent,
-          })),
-          currency,
-        },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      setInsights(data?.insights ?? []);
-      setSummary(data?.summary ?? null);
-      setGeneratedAt(data?.generatedAt ?? null);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not load insights");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void load();
-  }, [transactions, categories, budgets]);
+  if (insights.length === 0) return null;
 
   return (
     <div
       className="rounded-2xl border border-white/5 p-4"
       style={{ background: "var(--card)", boxShadow: "var(--shadow-sm)" }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div
-            className="flex h-7 w-7 items-center justify-center rounded-lg"
-            style={{ background: "var(--gradient-violet)" }}
-          >
-            <Sparkles className="h-3.5 w-3.5 text-foreground" />
-          </div>
-          <div>
-            <p className="text-[13px] font-semibold leading-none">Smart insights</p>
-            <p className="mt-0.5 text-[10.5px] text-muted-foreground">
-              {generatedAt
-                ? `Updated ${new Date(generatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
-                : "Analyzing your activity"}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() => {
-            void load();
-          }}
-          disabled={loading}
-          aria-label="Refresh insights"
-          className="glass-subtle flex h-7 w-7 items-center justify-center rounded-full disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-        </button>
-      </div>
-
-      {summary && (
-        <p className="mt-2.5 text-[12px] leading-relaxed text-muted-foreground">{summary}</p>
-      )}
-
-      <div className="mt-3 space-y-1.5">
-        {loading && insights.length === 0 && (
-          <p className="text-[12px] text-muted-foreground">Reading your numbers...</p>
-        )}
-        {!loading && insights.length === 0 && (
-          <p className="text-[12px] text-muted-foreground">
-            Add more activity and we&apos;ll spot trends for you.
-          </p>
-        )}
-        {insights.map((insight, index) => {
+      <p className="mb-3 text-[13px] font-semibold">Smart insights</p>
+      <div className="space-y-1.5">
+        {insights.map((insight, i) => {
           const Icon = ICONS[insight.severity] ?? Info;
-          const Trend =
-            insight.kind === "spending_change" && insight.severity === "warning"
-              ? TrendingDown
-              : null;
           const tone = TONES[insight.severity];
           const open = openId === insight.id;
-
           return (
             <motion.button
               key={insight.id}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.04 }}
+              transition={{ delay: i * 0.04 }}
               onClick={() => setOpenId(open ? null : insight.id)}
               className="w-full rounded-xl border border-white/5 p-2.5 text-left"
               style={{ background: "color-mix(in oklab, var(--foreground) 3%, transparent)" }}
@@ -181,53 +164,26 @@ export function InsightsPanel({
                   className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
                   style={{ background: `color-mix(in oklab, ${tone} 18%, transparent)` }}
                 >
-                  {Trend ? (
-                    <Trend className="h-3.5 w-3.5" style={{ color: tone }} />
-                  ) : (
-                    <Icon className="h-3.5 w-3.5" style={{ color: tone }} />
-                  )}
+                  <Icon className="h-3.5 w-3.5" style={{ color: tone }} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[12.5px] font-semibold">{insight.title}</p>
                     <ChevronDown
-                      className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${
-                        open ? "rotate-180" : ""
-                      }`}
+                      className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
                     />
                   </div>
-                  <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
-                    {insight.detail}
-                  </p>
                   <AnimatePresence initial={false}>
                     {open && (
-                      <motion.div
+                      <motion.p
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
+                        className="overflow-hidden text-[11.5px] leading-relaxed text-muted-foreground"
                       >
-                        <div className="mt-2 flex gap-1.5">
-                          {insight.source.map((source) => (
-                            <div
-                              key={source.label}
-                              className="flex-1 rounded-lg border border-white/5 p-1.5 text-center"
-                              style={{ background: "var(--card)" }}
-                            >
-                              <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground">
-                                {source.label}
-                              </p>
-                              <p className="mt-0.5 text-[12px] font-semibold tabular-nums">
-                                {source.value}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                        <p className="mt-1.5 text-[9.5px] text-muted-foreground">
-                          Source: your transactions and budgets
-                        </p>
-                      </motion.div>
+                        {insight.detail}
+                      </motion.p>
                     )}
                   </AnimatePresence>
                 </div>

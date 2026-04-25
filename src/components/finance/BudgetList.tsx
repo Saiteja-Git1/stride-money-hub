@@ -2,33 +2,37 @@ import { motion } from "framer-motion";
 import * as Icons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AlertTriangle } from "lucide-react";
-import type { Budget } from "@/lib/mock-data";
-import { categoryById, formatMoney } from "@/lib/mock-data";
 import { useState } from "react";
-import { BudgetDetailDrawer } from "./BudgetDetailDrawer";
+import type { FinanceBudgetSummary, FinanceCategory } from "@/lib/finance";
+import { formatMoney } from "@/lib/finance";
 
-export function BudgetList({ budgets }: { budgets: Budget[] }) {
-  const [active, setActive] = useState<Budget | null>(null);
+interface Props {
+  summaries: FinanceBudgetSummary[];
+  categories: FinanceCategory[];
+}
+
+export function BudgetList({ summaries, categories }: Props) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  if (summaries.length === 0) return null;
+
   return (
-    <>
     <div className="space-y-2.5">
-      {budgets.map((b, i) => {
-        const cat = categoryById(b.categoryId);
+      {summaries.map((b, i) => {
+        const cat = categories.find((c) => c.id === b.categoryId);
+        if (!cat) return null;
         const Icon = (Icons[cat.icon as keyof typeof Icons] as LucideIcon) ?? Icons.Circle;
         const pct = Math.min(100, (b.spent / b.limit) * 100);
         const danger = pct >= 90;
         const warn = pct >= 75 && !danger;
         const remaining = Math.max(0, b.limit - b.spent);
-        const barColor = danger
-          ? "var(--destructive)"
-          : warn
-          ? "var(--warning)"
-          : "var(--primary)";
+        const barColor = danger ? "var(--destructive)" : warn ? "var(--warning)" : "var(--primary)";
+
         return (
           <motion.button
             key={b.id}
             type="button"
-            onClick={() => setActive(b)}
+            onClick={() => setActiveId(activeId === b.id ? null : b.id)}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
@@ -50,8 +54,8 @@ export function BudgetList({ budgets }: { budgets: Budget[] }) {
                 <div className="flex items-center justify-between gap-2">
                   <p className="truncate text-sm font-semibold">{cat.name}</p>
                   <p className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                    <span className="font-semibold text-foreground">{formatMoney(b.spent)}</span>
-                    <span className="opacity-60"> / {formatMoney(b.limit)}</span>
+                    <span className="font-semibold text-foreground">{formatMoney(b.spent, b.currency)}</span>
+                    <span className="opacity-60"> / {formatMoney(b.limit, b.currency)}</span>
                   </p>
                 </div>
                 <div className="mt-2 flex items-center gap-2">
@@ -59,11 +63,7 @@ export function BudgetList({ budgets }: { budgets: Budget[] }) {
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${pct}%` }}
-                      transition={{
-                        duration: 0.9,
-                        ease: [0.22, 1, 0.36, 1],
-                        delay: 0.15 + i * 0.05,
-                      }}
+                      transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.15 + i * 0.05 }}
                       className="h-full rounded-full"
                       style={{
                         background: danger
@@ -75,18 +75,15 @@ export function BudgetList({ budgets }: { budgets: Budget[] }) {
                       }}
                     />
                   </div>
-                  <span
-                    className="shrink-0 text-[10px] font-semibold tabular-nums"
-                    style={{ color: danger ? "var(--destructive)" : "var(--muted-foreground)" }}
-                  >
+                  <span className="shrink-0 text-[10px] font-semibold tabular-nums"
+                    style={{ color: danger ? "var(--destructive)" : "var(--muted-foreground)" }}>
                     {Math.round(pct)}%
                   </span>
                 </div>
                 <div className="mt-1.5 flex items-center justify-between text-[10px]">
                   {danger ? (
                     <span className="flex items-center gap-1 font-medium text-destructive">
-                      <AlertTriangle className="h-3 w-3" />
-                      Near limit
+                      <AlertTriangle className="h-3 w-3" /> Near limit
                     </span>
                   ) : warn ? (
                     <span className="font-medium text-warning">Watch your spending</span>
@@ -94,7 +91,7 @@ export function BudgetList({ budgets }: { budgets: Budget[] }) {
                     <span className="font-medium text-muted-foreground">On track</span>
                   )}
                   <span className="tabular-nums text-muted-foreground">
-                    {formatMoney(remaining)} left
+                    {formatMoney(remaining, b.currency)} left
                   </span>
                 </div>
               </div>
@@ -103,7 +100,5 @@ export function BudgetList({ budgets }: { budgets: Budget[] }) {
         );
       })}
     </div>
-    <BudgetDetailDrawer budget={active} onClose={() => setActive(null)} />
-    </>
   );
 }

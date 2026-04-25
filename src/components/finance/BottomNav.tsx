@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowLeftRight, Home, PieChart, Plus, Target } from "lucide-react";
+import { ArrowLeftRight, Home, PieChart, Plus, Target, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { QuickAddSheet } from "./QuickAddSheet";
 import { useFinance } from "@/integrations/supabase/use-finance";
@@ -9,6 +9,7 @@ import { useFinance } from "@/integrations/supabase/use-finance";
 const items = [
   { to: "/", label: "Home", icon: Home },
   { to: "/transactions", label: "Activity", icon: ArrowLeftRight },
+  { to: "/accounts", label: "Accounts", icon: Wallet },
   { to: "/budgets", label: "Budgets", icon: PieChart },
   { to: "/goals", label: "Goals", icon: Target },
 ] as const;
@@ -31,6 +32,7 @@ export function BottomNav() {
       >
         <Plus className="h-6 w-6" strokeWidth={2.6} />
       </motion.button>
+
       <QuickAddSheet
         accounts={accounts}
         categories={categories}
@@ -52,37 +54,35 @@ export function BottomNav() {
           );
         }}
       />
+
       <nav
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/5 bg-background/70 backdrop-blur-2xl backdrop-saturate-150"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="relative mx-auto grid max-w-md grid-cols-4 gap-1 px-2 py-2">
+        <div className="relative mx-auto grid max-w-md grid-cols-5 gap-1 px-2 py-2">
           {items.map(({ to, label, icon: Icon }) => {
             const active = pathname === to;
             return (
               <Link
                 key={to}
                 to={to}
-                className="relative flex flex-col items-center gap-0.5 rounded-2xl px-2 py-2"
+                className="relative flex flex-col items-center gap-0.5 rounded-2xl px-1 py-2"
               >
                 {active && (
                   <motion.span
                     layoutId="nav-active"
-                    className="absolute inset-x-3 inset-y-1 rounded-2xl"
-                    style={{
-                      background:
-                        "color-mix(in oklab, var(--primary) 14%, transparent)",
-                    }}
+                    className="absolute inset-x-2 inset-y-1 rounded-2xl"
+                    style={{ background: "color-mix(in oklab, var(--primary) 14%, transparent)" }}
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
                 )}
                 <Icon
-                  className="relative h-[19px] w-[19px] transition-colors"
+                  className="relative h-[18px] w-[18px] transition-colors"
                   style={{ color: active ? "var(--primary)" : "var(--muted-foreground)" }}
                   strokeWidth={active ? 2.4 : 1.9}
                 />
                 <span
-                  className="relative text-[10px] font-medium transition-colors"
+                  className="relative text-[9px] font-medium transition-colors"
                   style={{ color: active ? "var(--foreground)" : "var(--muted-foreground)" }}
                 >
                   {label}

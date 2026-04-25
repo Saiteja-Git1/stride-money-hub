@@ -147,7 +147,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
     setRefreshing(true);
     try {
-      await ensureBootstrap(user);
       const snapshot = await loadSnapshot(user);
       applySnapshot(snapshot);
     } finally {
