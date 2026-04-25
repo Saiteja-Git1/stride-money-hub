@@ -94,11 +94,13 @@ function TransactionsPage() {
           onChange={update}
           onReset={reset}
           resultCount={filtered.length}
+          categories={categories}
         />
       </section>
 
       <section className="mt-3 px-5">
         <NLQueryBar
+          categories={categories}
           onApply={(f) => {
             update({
               type: (f.type ?? "all") as TxType,

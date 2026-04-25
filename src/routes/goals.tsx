@@ -128,7 +128,7 @@ function GoalsPage() {
           return (
             <motion.div key={g.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}>
-              <button type="button" onClick={() => setActiveId(isActive ? null : g.id)}
+              <motion.button type="button" onClick={() => setActiveId(isActive ? null : g.id)}
                 whileTap={{ scale: 0.985 }}
                 className="flex w-full items-center gap-4 rounded-2xl border border-white/5 bg-card p-4 text-left"
                 style={{ boxShadow: "var(--shadow-sm)" }}>
@@ -152,7 +152,7 @@ function GoalsPage() {
                     </p>
                   )}
                 </div>
-              </button>
+              </motion.button>
               {isActive && (
                 <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
                   className="mt-1 rounded-2xl border border-white/5 bg-card p-3">
