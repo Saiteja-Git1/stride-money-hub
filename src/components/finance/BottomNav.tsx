@@ -14,10 +14,13 @@ const items = [
   { to: "/goals", label: "Goals", icon: Target },
 ] as const;
 
+const FAB_HIDDEN_ROUTES = ["/budgets", "/goals", "/accounts"];
+
 export function BottomNav() {
   const { pathname } = useLocation();
   const [quickOpen, setQuickOpen] = useState(false);
   const { accounts, addTransaction, categories } = useFinance();
+  const hideFab = FAB_HIDDEN_ROUTES.includes(pathname);
 
   return (
     <>
@@ -27,7 +30,7 @@ export function BottomNav() {
         transition={{ type: "spring", stiffness: 400, damping: 17 }}
         aria-label="Add transaction"
         onClick={() => setQuickOpen(true)}
-        className="fixed bottom-20 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full text-primary-foreground"
+        className={`fixed bottom-20 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full text-primary-foreground transition-all ${hideFab ? "pointer-events-none opacity-0 scale-75" : "opacity-100 scale-100"}`}
         style={{ background: "var(--gradient-primary)", boxShadow: "var(--shadow-glow)" }}
       >
         <Plus className="h-6 w-6" strokeWidth={2.6} />
