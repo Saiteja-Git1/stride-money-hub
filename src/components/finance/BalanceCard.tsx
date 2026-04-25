@@ -6,8 +6,8 @@ import { AnimatedNumber } from "./AnimatedNumber";
 
 const sparklineY = [46, 31, 37, 26, 32, 12, 24, 5];
 
-function formatBalance(n: number) {
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function formatBalance(n: number, cur: FinanceCurrency = "INR") {
+  return formatMoney(n, cur);
 }
 
 function buildSparklinePath(width: number, height: number, values: number[]) {
@@ -37,7 +37,7 @@ export function BalanceCard({
   total,
   income,
   expense,
-  currency = "USD",
+  currency = "INR",
 }: {
   total: number;
   income: number;
@@ -91,7 +91,7 @@ export function BalanceCard({
                 transition={{ duration: 0.22 }}
                 className="mt-2.5 text-[42px] font-semibold leading-none tracking-[-0.04em] text-white tabular-nums sm:text-[46px]"
               >
-                {hidden ? "------" : <AnimatedNumber value={total} format={formatBalance} />}
+                {hidden ? "------" : <AnimatedNumber value={total} format={(n) => formatBalance(n, currency)} />}
               </motion.div>
             </AnimatePresence>
 

@@ -46,7 +46,7 @@ function Index() {
   const totalBalance = useMemo(() => getTotalBalance(accounts), [accounts]);
   const monthIncome = useMemo(() => getMonthIncome(transactions), [transactions]);
   const monthExpense = useMemo(() => getMonthExpense(transactions), [transactions]);
-  const primaryCurrency = accounts[0]?.currency ?? "INR";
+  const primaryCurrency = accounts.find((a) => a.currency === "INR")?.currency ?? accounts[0]?.currency ?? "INR";
   const cashFlowData = useMemo(() => buildCashFlowData(transactions), [transactions]);
 
   useEffect(() => {
