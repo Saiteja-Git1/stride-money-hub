@@ -13,6 +13,7 @@ import { Route as TransactionsRouteImport } from './routes/transactions'
 import { Route as GoalsRouteImport } from './routes/goals'
 import { Route as BudgetsRouteImport } from './routes/budgets'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthResetRouteImport } from './routes/auth.reset'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -36,6 +37,12 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+
+const AuthResetRoute = AuthResetRouteImport.update({
+  id: '/auth/reset',
+  path: '/auth/reset',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AccountsRoute = AccountsRouteImport.update({
   id: '/accounts',
   path: '/accounts',
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
   '/auth': typeof AuthRoute
+    '/auth/reset': typeof AuthResetRoute
   '/budgets': typeof BudgetsRoute
   '/goals': typeof GoalsRoute
   '/transactions': typeof TransactionsRoute
@@ -59,6 +67,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
   '/auth': typeof AuthRoute
+    '/auth/reset': typeof AuthResetRoute
   '/budgets': typeof BudgetsRoute
   '/goals': typeof GoalsRoute
   '/transactions': typeof TransactionsRoute
@@ -68,6 +77,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/accounts': typeof AccountsRoute
   '/auth': typeof AuthRoute
+    '/auth/reset': typeof AuthResetRoute
   '/budgets': typeof BudgetsRoute
   '/goals': typeof GoalsRoute
   '/transactions': typeof TransactionsRoute
@@ -97,6 +107,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountsRoute: typeof AccountsRoute
   AuthRoute: typeof AuthRoute
+  AuthResetRoute: typeof AuthResetRoute
   BudgetsRoute: typeof BudgetsRoute
   GoalsRoute: typeof GoalsRoute
   TransactionsRoute: typeof TransactionsRoute
@@ -123,6 +134,13 @@ declare module '@tanstack/react-router' {
       path: '/budgets'
       fullPath: '/budgets'
       preLoaderRoute: typeof BudgetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/reset': {
+      id: '/auth/reset'
+      path: '/auth/reset'
+      fullPath: '/auth/reset'
+      preLoaderRoute: typeof AuthResetRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -153,6 +171,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountsRoute: AccountsRoute,
   AuthRoute: AuthRoute,
+  AuthResetRoute: AuthResetRoute,
   BudgetsRoute: BudgetsRoute,
   GoalsRoute: GoalsRoute,
   TransactionsRoute: TransactionsRoute,
@@ -160,12 +179,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
